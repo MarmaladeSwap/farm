@@ -394,11 +394,4 @@ contract MasterMarm is Ownable {
         startBlock = newStartBlock;
         emit SetStartBlock(msg.sender, newStartBlock);
     }
-    
-//    function setMarmPerBlock(uint256 newMarmPerBlock) external onlyOwner() {
-//        massUpdatePools();
-//        marmPerBlock = newMarmPerBlock;
-//        emit SetMarmPerBlock(msg.sender, newMarmPerBlock);
-//    }
-        
 }
