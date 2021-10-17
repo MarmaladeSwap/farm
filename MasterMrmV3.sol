@@ -5,7 +5,7 @@ pragma solidity 0.6.12;
  * MarmaladeSwapFinance 
  * App:             https://marmaladeswap.finance/ 
  * Twitter:         https://twitter.com/MarmaladeSwap
- * Facebook:    	https://www.facebook.com/groups/MarmaladeSwap
+ * Facebook:        https://www.facebook.com/groups/MarmaladeSwap
  * Telegram:        https://t.me/MarmaladeSwap
  * Telegram chat:   https://t.me/MarmaladeSwapFinance
  * GitHub:          https://github.com/MarmaladeSwap
@@ -27,6 +27,7 @@ import "./MarmSplitBar.sol";
 // distributed and the community can show to govern itself.
 //
 // Have fun reading it. Hopefully it's bug-free. God bless.
+
 contract MasterMarm is Ownable {
     using SafeMath for uint256;
     using SafeBEP20 for IBEP20;
@@ -409,5 +410,4 @@ contract MasterMarm is Ownable {
     function getReferrer(address _user) public view returns (address) {
         return referrers[_user];
     }
- 
 }
