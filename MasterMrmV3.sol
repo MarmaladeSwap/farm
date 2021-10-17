@@ -18,7 +18,6 @@ import './pancake-swap-lib/contracts/access/Ownable.sol';
 
 import "./MarmToken.sol";
 import "./MarmSplitBar.sol";
-import "./libs/IReferral.sol";
 
 // MasterMarm is the master of MARM AND MARMSPLIT. 
 // He can make Marm and he is a fair guy.
@@ -79,20 +78,22 @@ contract MasterMarm is Ownable {
     uint256 public startBlock;
     
     
-    // MarmaladeSwap referral contract address.		
-    IReferral public referral;		
     // Referral commission rate in basis points.		
     uint16 public referralCommissionRate = 500;		
-    // Max referral commission rate: 5%.		
+    // Max referral commission rate: 10%.		
     uint16 public constant MAXIMUM_REFERRAL_COMMISSION_RATE = 1000;
+    
+    mapping(address => address) public referrers; // user address => referrer address
+    mapping(address => uint256) public referralsCount; // referrer address => referrals count
 
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
-    event SetReferralAddress(address indexed user, IReferral indexed newAddress);		
     event ReferralCommissionPaid(address indexed user, address indexed referrer, uint256 commissionAmount);
     event UpdateEmissionRate(address indexed user, uint256 marmPerBlock);
     event SetStartBlock(address indexed user, uint256 newStartBlock);
+    event ReferralRecorded(address indexed user, address indexed referrer);
+    event OperatorUpdated(address indexed operator, bool indexed status);
 
     constructor(
         MarmToken _marm,
@@ -239,8 +240,8 @@ contract MasterMarm is Ownable {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
         updatePool(_pid);
-         if (_amount > 0 && address(referral) != address(0) && _referrer != address(0) && _referrer != msg.sender) {		
-            referral.recordReferral(msg.sender, _referrer);		
+         if (_amount > 0 && _referrer != address(0) && _referrer != msg.sender) {		
+            _recordReferral(msg.sender, _referrer);		
         }
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.accMarmPerShare).div(1e12).sub(user.rewardDebt);
@@ -283,8 +284,8 @@ contract MasterMarm is Ownable {
         PoolInfo storage pool = poolInfo[0];
         UserInfo storage user = userInfo[0][msg.sender];
         updatePool(0);
-        if (_amount > 0 && address(referral) != address(0) && _referrer != address(0) && _referrer != msg.sender) {		
-            referral.recordReferral(msg.sender, _referrer);
+        if (_amount > 0 && _referrer != address(0) && _referrer != msg.sender) {		
+            _recordReferral(msg.sender, _referrer);
         }
         if (user.amount > 0) {
             uint256 pending = user.amount.mul(pool.accMarmPerShare).div(1e12).sub(user.rewardDebt);
@@ -356,22 +357,17 @@ contract MasterMarm is Ownable {
         devaddr = _devaddr;
     }
     
-		    // Update the referral contract address by the owner		
-    function setReferralAddress(IReferral _referral) external onlyOwner {		
-        referral = _referral;		
-        emit SetReferralAddress(msg.sender, _referral);		
- 		
-    }		
+
     // Update referral commission rate by the owner		
     function setReferralCommissionRate(uint16 _referralCommissionRate) external onlyOwner {		
         require(_referralCommissionRate <= MAXIMUM_REFERRAL_COMMISSION_RATE, "setReferralCommissionRate: invalid referral commission rate basis points");		
         referralCommissionRate = _referralCommissionRate;		
- 		
-    }		
+    }	
+    
     // Pay referral commission to the referrer who referred this user.		
     function payReferralCommission(address _user, uint256 _pending) internal {		
-        if (address(referral) != address(0) && referralCommissionRate > 0) {		
-            address referrer = referral.getReferrer(_user);		
+        if (referralCommissionRate > 0) {		
+            address referrer = getReferrer(_user);		
             uint256 commissionAmount = _pending.mul(referralCommissionRate).div(10000);		
             if (referrer != address(0) && commissionAmount > 0) {		
                 marm.mint(referrer, commissionAmount);		
@@ -387,11 +383,31 @@ contract MasterMarm is Ownable {
         emit UpdateEmissionRate(msg.sender, _marmPerBlock);
     }
        
-        // Only update before start of farm
-
+    // Only update before start of farm
     function setStartBlock(uint256 newStartBlock) external onlyOwner() {
         massUpdatePools();
         startBlock = newStartBlock;
         emit SetStartBlock(msg.sender, newStartBlock);
     }
+    
+    /**
+     * @dev Record referral.
+     */
+    function _recordReferral(address _user, address _referrer) internal {
+        if (_user != address(0)
+            && _referrer != address(0)
+            && _user != _referrer
+            && referrers[_user] == address(0)
+        ) {
+            referrers[_user] = _referrer;
+            referralsCount[_referrer] += 1;
+            emit ReferralRecorded(_user, _referrer);
+        }
+    }
+
+    // Get the referrer address that referred the user
+    function getReferrer(address _user) public view returns (address) {
+        return referrers[_user];
+    }
+ 
 }
